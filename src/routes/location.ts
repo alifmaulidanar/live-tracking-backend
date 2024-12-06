@@ -5,18 +5,49 @@ const location = new Hono();
 
 location.post('/save-location', async (c) => {
   const supabase = createSupabaseClient(c);
-  const { user_id, username, latitude, longitude } = await c.req.json();
-  const { error } = await supabase
-    .from('locations')
-    .upsert({ user_id, username, latitude, longitude });
+  const { user_id, latitude, longitude } = await c.req.json();
 
-  if (error) {
-    return c.json({ message: 'Error updating location', error: error.message }, 500);
+  try {
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
+    if (userError || !userData) {
+      return c.json({ message: 'User not found', error: userError?.message }, 404);
+    }
+
+    const { error } = await supabase
+      .from('locations')
+      .upsert({ user_id, latitude, longitude });
+
+    if (error) {
+      return c.json({ message: 'Error saving location', error: error.message }, 500);
+    }
+
+    console.log("Successfully saved location");
+    return c.json({ message: 'Location saved successfully' });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return c.json({ message: 'Unexpected error', error }, 500);
   }
-
-  console.log("Successfull saved location");
-  return c.json({ message: 'Location saved successfully' });
 });
+
+// location.post('/save-location', async (c) => {
+//   const supabase = createSupabaseClient(c);
+//   const { user_id, username, latitude, longitude } = await c.req.json();
+//   const { error } = await supabase
+//     .from('locations')
+//     .upsert({ user_id, username, latitude, longitude });
+
+//   if (error) {
+//     return c.json({ message: 'Error updating location', error: error.message }, 500);
+//   }
+
+//   console.log("Successfull saved location");
+//   return c.json({ message: 'Location saved successfully' });
+// });
 
 location.get('/latest-locations', async (c) => {
   const supabase = createSupabaseClient(c);
