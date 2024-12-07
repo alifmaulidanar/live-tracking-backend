@@ -21,7 +21,7 @@ user.post('/adduser', async (c) => {
     // Create user in users table
     const { error: upsertError } = await supabase
       .from('users')
-      .insert({ user_id: data?.user?.id, email, username, phone, created_at: new Date(), updated_at: new Date() });
+      .insert({ user_id: data?.user?.id, email, username, phone, role: "user", created_at: new Date(), updated_at: new Date() });
 
     if (upsertError) {
       return c.json({ message: 'Error inserting user data', error: upsertError.message }, 400);
