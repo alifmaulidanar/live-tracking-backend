@@ -3,6 +3,7 @@ import auth from './routes/auth';
 import user from './routes/users';
 import profile from './routes/profile';
 import location from './routes/location';
+import geofence from './routes/geofences';
 import { corsMiddleware } from './middleware/cors';
 
 const app = new Hono();
@@ -13,6 +14,7 @@ app.use(corsMiddleware);
 // Routes
 app.route('/', auth);
 app.route('/', location);
+app.route('/', geofence);
 app.route('/', user);
 app.route('/', profile);
 
