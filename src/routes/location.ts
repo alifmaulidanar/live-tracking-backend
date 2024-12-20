@@ -5,7 +5,7 @@ const location = new Hono();
 
 location.post('/save-location', async (c) => {
   const supabase = createSupabaseClient(c);
-  const { user_id, latitude, longitude } = await c.req.json();
+  const { location_uuid, user_id, latitude, longitude, timestamp } = await c.req.json();
 
   try {
     const { data: userData, error: userError } = await supabase
@@ -20,7 +20,14 @@ location.post('/save-location', async (c) => {
 
     const { error } = await supabase
       .from('locations')
-      .upsert({ user_id, latitude, longitude });
+      .upsert([
+        {
+          location_uuid,
+          user_id,
+          latitude,
+          longitude,
+        }
+      ], { onConflict: 'location_uuid' });
 
     if (error) {
       return c.json({ message: 'Error saving location', error: error.message }, 500);
