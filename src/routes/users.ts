@@ -27,7 +27,18 @@ user.post('/adduser', async (c) => {
       return c.json({ message: 'Error inserting user data', error: upsertError.message }, 400);
     }
 
-    return c.json({ user_id, email, username, phone, created_at, updated_at });
+    // Add user role
+    const { error: roleError } = await supabase
+      .from('roles')
+      .upsert({ user_id: data?.user?.id, role: "user" });
+
+    if (roleError) {
+      console.error('Error inserting user role:', roleError);
+      return c.json({ message: 'Error inserting user role', error: roleError.message }, 400);
+    }
+
+    return c.json({ message: 'User added successfully', user_id, email, username, phone, created_at, updated_at });
+    // return c.json({ user_id, email, username, phone, created_at, updated_at });
   } catch (error) {
     console.error('Unexpected error:', error);
     return c.json({ message: 'Unexpected error', error: error }, 500);
