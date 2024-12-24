@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { adminSupabaseClient, createSupabaseClient } from '../services/supabase';
 import { v7 as uuidv7 } from 'uuid';
+import { adminSupabaseClient, createSupabaseClient } from '../services/supabase';
 
 const ticket = new Hono();
 
@@ -23,7 +23,49 @@ ticket.get('/tickets', async (c) => {
   }
 });
 
-// Post a new ticket to supabase table "tickets" with columns: ticket_id (generated uuid from here), trip_id (param), geofence_id (param), user_id (param), status ("not_started")
+// Get a ticket by user_id
+ticket.get('/ticket/:user_id', async (c) => {
+  const supabase = createSupabaseClient(c);
+  const user_id = c.req.param('user_id');
+
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('user_id', user_id);
+
+    if (error) {
+      return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
+    }
+
+    return c.json(data);
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+// Get a ticket by ticket_id
+ticket.get('/ticket/:ticket_id', async (c) => {
+  const supabase = createSupabaseClient(c);
+  const ticket_id = c.req.param('ticket_id');
+
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('ticket_id', ticket_id);
+
+    if (error) {
+      return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
+    }
+
+    return c.json(data);
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+// Create a ticket
 ticket.post('/ticket', async (c) => {
   const supabase = createSupabaseClient(c);
   const { user_id, geofence_id, description } = await c.req.json();
@@ -51,7 +93,7 @@ ticket.post('/ticket', async (c) => {
   }
 });
 
-// After post, we need functionallity to update the ticket
+// Update a ticket
 ticket.put('/ticket', async (c) => {
   const supabase = createSupabaseClient(c);
   const { ticket_id, user_id, geofence_id, description, status } = await c.req.json();
