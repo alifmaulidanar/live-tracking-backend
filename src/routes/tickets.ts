@@ -51,4 +51,25 @@ ticket.post('/ticket', async (c) => {
   }
 });
 
+// After post, we need functionallity to update the ticket
+ticket.put('/ticket', async (c) => {
+  const supabase = createSupabaseClient(c);
+  const { ticket_id, user_id, geofence_id, description, status } = await c.req.json();
+
+  try {
+    const { error } = await supabase
+      .from('tickets')
+      .update({ user_id, geofence_id, description, status })
+      .eq('ticket_id', ticket_id);
+
+    if (error) {
+      return c.json({ message: 'Error updating ticket', error: error.message }, 500);
+    }
+
+    return c.json({ message: 'Ticket updated successfully' });
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
 export default ticket;
