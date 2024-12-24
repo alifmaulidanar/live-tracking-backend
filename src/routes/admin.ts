@@ -3,8 +3,27 @@ import { adminSupabaseClient, createSupabaseClient } from '../services/supabase'
 
 const admin = new Hono();
 
+// Fetch all admins from the database
+admin.get('/fc092d77b6c7/admins', async (c) => {
+  const supabase = createSupabaseClient(c);
+
+  try {
+    const { data, error } = await supabase
+      .from('admins')
+      .select('*')
+
+    if (error) {
+      return c.json({ message: 'Error fetching admins', error: error.message }, 400);
+    }
+
+    return c.json(data);
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
 // Add admin by Admin route
-admin.post('/fc092d77b6c7/addadmin', async (c) => {
+admin.post('/fc092d77b6c7/admin', async (c) => {
   const supabase = createSupabaseClient(c);
   const { email, password, username, phone } = await c.req.json();
   const created_at = new Date();
@@ -45,27 +64,8 @@ admin.post('/fc092d77b6c7/addadmin', async (c) => {
   }
 });
 
-// Fetch all admins from the database
-admin.get('/fc092d77b6c7/admins', async (c) => {
-  const supabase = createSupabaseClient(c);
-
-  try {
-    const { data, error } = await supabase
-      .from('admins')
-      .select('*')
-
-    if (error) {
-      return c.json({ message: 'Error fetching admins', error: error.message }, 400);
-    }
-
-    return c.json(data);
-  } catch (error) {
-    return c.json({ message: 'Unexpected error', error: error }, 500);
-  }
-});
-
 // Update admin by Admin route
-admin.put('/fc092d77b6c7/updateadmin', async (c) => {
+admin.put('/fc092d77b6c7/admin', async (c) => {
   const supabase = createSupabaseClient(c);
   const adminSupabase = adminSupabaseClient(c);
   const { admin_id, email, username, phone } = await c.req.json();
@@ -100,7 +100,7 @@ admin.put('/fc092d77b6c7/updateadmin', async (c) => {
 });
 
 // Delete admin by Admin route
-admin.delete('/fc092d77b6c7/deleteadmin', async (c) => {
+admin.delete('/fc092d77b6c7/admin', async (c) => {
   const supabase = createSupabaseClient(c);
   const adminSupabase = adminSupabaseClient(c);
   const { admin_id } = await c.req.json();
