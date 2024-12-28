@@ -99,16 +99,40 @@ ticket.put('/ticket', async (c) => {
   const { ticket_id, user_id, geofence_id, description, status } = await c.req.json();
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('tickets')
       .update({ user_id, geofence_id, description, status })
-      .eq('ticket_id', ticket_id);
+      .eq('ticket_id', ticket_id)
 
     if (error) {
       return c.json({ message: 'Error updating ticket', error: error.message }, 500);
     }
 
     return c.json({ message: 'Ticket updated successfully' });
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+// Update a ticket status
+ticket.put('/ticket/status', async (c) => {
+  const supabase = createSupabaseClient(c);
+  const { ticket_id, trip_id, status } = await c.req.json();
+
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .update({ trip_id, status })
+      .eq('ticket_id', ticket_id)
+
+    if (error) {
+      return c.json({ message: 'Error updating ticket status', error: error.message }, 500);
+    }
+
+    console.log("Ticket status updated successfully");
+    console.log({ data });
+
+    return c.json({ message: 'Ticket status updated successfully' });
   } catch (error) {
     return c.json({ message: 'Unexpected error', error: error }, 500);
   }
