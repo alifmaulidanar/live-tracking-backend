@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { adminSupabaseClient, createSupabaseClient } from '../services/supabase';
+import { Trip } from '../types';
+import { createSupabaseClient } from '../services/supabase';
 
 const trip = new Hono();
 
@@ -59,6 +60,50 @@ trip.get('/trip/:trip_id', async (c) => {
     }
 
     return c.json(data);
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+// Create a new trip
+trip.post('/trip', async (c) => {
+  const supabase = createSupabaseClient(c);
+  const { radar_id, external_id, user_id, geofence_id, geofence_tag, mode, status, duration, live, approaching_threshold }: Trip = await c.req.json();
+
+  try {
+    const { error } = await supabase
+      .from('trips')
+      .insert([
+        { radar_id, external_id, user_id, geofence_id, geofence_tag, mode, status, duration, live, approaching_threshold }
+      ]);
+
+    if (error) {
+      return c.json({ message: 'Error creating trip', error: error.message }, 400);
+    }
+
+    return c.json({ message: 'Trip created' });
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+// Update a trip by trip_id
+trip.put('/trip/status', async (c) => {
+  console.log("Update trip status");
+  const supabase = createSupabaseClient(c);
+  const { trip_id, status, duration } = await c.req.json();
+
+  try {
+    const { error } = await supabase
+      .from('trips')
+      .update({ status, duration })
+      .eq('external_id', trip_id);
+
+    if (error) {
+      return c.json({ message: 'Error updating trip', error: error.message }, 400);
+    }
+
+    return c.json({ message: 'Trip updated' });
   } catch (error) {
     return c.json({ message: 'Unexpected error', error: error }, 500);
   }

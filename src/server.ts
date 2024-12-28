@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import auth from './routes/auth';
+import trip from './routes/trips';
 import user from './routes/users';
 import admin from './routes/admin';
 import ticket from './routes/tickets';
@@ -20,6 +21,7 @@ app.route('/', user);
 app.route('/', profile);
 app.route('/', geofence);
 app.route('/', ticket);
+app.route('/', trip);
 
 // Emergency route
 app.route('/api/emergency', emergency);
