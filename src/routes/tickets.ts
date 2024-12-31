@@ -180,9 +180,6 @@ ticket.put('/ticket/status', async (c) => {
       return c.json({ message: 'Error updating ticket status', error: error.message }, 500);
     }
 
-    console.log("Ticket status updated successfully");
-    console.log({ data });
-
     return c.json({ message: 'Ticket status updated successfully' });
   } catch (error) {
     return c.json({ message: 'Unexpected error', error: error }, 500);

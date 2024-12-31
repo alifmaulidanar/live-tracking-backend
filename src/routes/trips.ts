@@ -89,7 +89,6 @@ trip.post('/trip', async (c) => {
 
 // Update a trip by trip_id
 trip.put('/trip/status', async (c) => {
-  console.log("Update trip status");
   const supabase = createSupabaseClient(c);
   const { trip_id, status, duration } = await c.req.json();
 

@@ -26,7 +26,6 @@ profile.get('/profile', async (c) => {
       return c.json({ message: 'User not found' }, 404);
     }
 
-    console.log("Successfull fetch user profile");
     return c.json(data);
   } catch (error) {
     console.error('Unexpected error:', error);

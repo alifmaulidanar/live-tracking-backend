@@ -15,7 +15,6 @@ auth.post('/login', async (c) => {
       return c.json({ message: 'Error logging in', error: error.message }, 400);
     }
 
-    console.log("Successfull logged in");
     return c.json(data);
   } catch (error) {
     return c.json({ message: 'Unexpected error', error: error }, 500);
@@ -35,13 +34,11 @@ auth.post('/adm/login/admin', async (c) => {
       .single();
 
     if (adminError || !adminData) {
-      console.log("Admin not found");
       return c.json({ message: 'Admin not found', error: adminError?.message }, 404);
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      console.log("Error logging in");
       return c.json({ message: 'Error logging in', error: error.message }, 400);
     }
 
@@ -60,7 +57,6 @@ auth.post('/logout', async (c) => {
     return c.json({ message: 'Error logging out', error: error.message }, 400);
   }
 
-  console.log("Successfull logged out");
   return c.json({ message: 'Logged out successfully' });
 });
 

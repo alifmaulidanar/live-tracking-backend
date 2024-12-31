@@ -33,7 +33,6 @@ location.post('/save-location', async (c) => {
       return c.json({ message: 'Error saving location', error: error.message }, 500);
     }
 
-    console.log("Successfully saved location");
     return c.json({ message: 'Location saved successfully' });
   } catch (error) {
     console.error('Unexpected error:', error);
@@ -52,7 +51,6 @@ location.post('/save-location', async (c) => {
 //     return c.json({ message: 'Error updating location', error: error.message }, 500);
 //   }
 
-//   console.log("Successfull saved location");
 //   return c.json({ message: 'Location saved successfully' });
 // });
 
@@ -64,7 +62,6 @@ location.get('/latest-locations', async (c) => {
     return c.json({ message: 'Error fetching locations', error: error.message }, 500);
   }
 
-  console.log("Successfull retrieved latest locations");
   return c.json(data);
 });
 
