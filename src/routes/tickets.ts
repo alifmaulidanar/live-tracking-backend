@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
+import { parse } from "csv-parse";
 import { v7 as uuidv7 } from 'uuid';
-import { adminSupabaseClient, createSupabaseClient } from '../services/supabase';
+import { createSupabaseClient } from '../services/supabase';
 
 const ticket = new Hono();
 
@@ -90,6 +91,56 @@ ticket.post('/ticket', async (c) => {
     return c.json({ message: 'Ticket saved successfully' });
   } catch (error) {
     return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+// Upload tickets from a CSV file
+ticket.post('/tickets/upload', async (c) => {
+  const supabase = createSupabaseClient(c);
+
+  try {
+    // Parse multipart form data
+    const formData = await c.req.parseBody();
+    const file = formData.file;
+
+    if (!file) return c.json({ message: 'No file provided' }, 400);
+    if (!(file instanceof File)) return c.json({ message: 'Invalid file type' }, 400);
+
+    const csvContent = new TextDecoder().decode(await file.arrayBuffer());
+    let records: any[] = [];
+
+    // Parse CSV content using csv-parser
+    await new Promise<void>((resolve, reject) => {
+      const stream = parse({ columns: true, delimiter: ';' }); // Specify semicolon as separator
+      stream.on("data", (data) => records.push(data));
+      stream.on("end", resolve);
+      stream.on("error", reject);
+      stream.write(csvContent);
+      stream.end();
+    });
+
+    // Validate and prepare tickets
+    const tickets = [];
+    for (const record of records) {
+      if (!record.user_id || !record.geofence_id) return c.json({ message: 'Invalid CSV format: Missing required fields' }, 400);
+
+      tickets.push({
+        ticket_id: uuidv7(),
+        user_id: record.user_id,
+        geofence_id: record.geofence_id,
+        description: record.description || null,
+      });
+    }
+
+    // Insert tickets into Supabase database
+    const { error } = await supabase
+      .from('tickets')
+      .insert(tickets);
+
+    if (error) return c.json({ message: 'Error uploading tickets', error: error.message }, 500);
+    return c.json({ message: 'Tickets uploaded successfully', count: tickets.length });
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error }, 500);
   }
 });
 
