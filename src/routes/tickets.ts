@@ -1,12 +1,10 @@
+// import sharp from 'sharp';
 import { Hono } from 'hono';
-import multer from "multer";
 import { parse } from "csv-parse";
 import { v7 as uuid } from 'uuid';
 import { createSupabaseClient } from '../services/supabase';
 
 const ticket = new Hono();
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 // Get all tickets from supabase table "tickets"
 ticket.get('/tickets', async (c) => {
@@ -115,7 +113,7 @@ ticket.post('/tickets/upload', async (c) => {
     // Parse CSV content using csv-parser
     await new Promise<void>((resolve, reject) => {
       const stream = parse({ columns: true, delimiter: ';' }); // Specify semicolon as separator
-      stream.on("data", (data) => records.push(data));
+      stream.on("data", (data: any) => records.push(data));
       stream.on("end", resolve);
       stream.on("error", reject);
       stream.write(csvContent);
@@ -189,49 +187,47 @@ ticket.put('/ticket/status', async (c) => {
   }
 });
 
+// Upload photos for a ticket
 ticket.post('/ticket/photos/upload', async (c) => {
-  await new Promise<void>((resolve, reject) => {
-    upload.array('photos', 4)(c.req as any, c.res as any, (err) => {
-      if (err) return reject(err);
-      resolve();
-    });
-  });
-  console.log("Request Headers:", c.req.headers);
-  console.log('Files uploaded:', (c.req as any).files);
   const supabase = createSupabaseClient(c);
-  const files = (c.req as any).files as Express.Multer.File[];
+  const body = await c.req.parseBody({ all: true });
+  const files = body['photos'] || body['photos[]'];
 
-  if (!files || files.length === 0) {
+  if (!files || !Array.isArray(files) || files.length === 0) {
     return c.json({ message: 'No files uploaded' }, 400);
   }
 
-  console.log({ files });
-  console.log({ ets });
-
   try {
     const results = [];
-
     for (const file of files) {
-      const uniqueName = `${uuid()}-${file.originalname}`;
+      if (file instanceof File) {
+        // const uniqueName = `${uuid()}-${file.name}`;
 
-      const { data, error } = await supabase.storage
-        .from('photos')
-        .upload(`user-photos/${uniqueName}`, file.buffer, {
-          contentType: file.mimetype,
-          upsert: false,
+        // Compress image using sharp (optional)
+        // const compressedBuffer = await sharp(await file.arrayBuffer())
+        //   .resize(800) // Resize to width of 800px
+        //   .jpeg({ quality: 70 }) // Compress to 70%
+        //   .toBuffer();
+
+        const { data, error } = await supabase.storage
+          .from('ticket-photos')
+          // .upload(`ticket-photos/${file.name}`, compressedBuffer, { // Upload compressed image
+          .upload(`ticket-photos/${file.name}`, await file.arrayBuffer(), { // Upload original image
+            contentType: file.type,
+            upsert: false,
+          });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        results.push({
+          name: file.name,
+          path: data?.path,
+          url: `${process.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${data?.path}`,
         });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      results.push({
-        name: uniqueName,
-        path: data?.path,
-        url: `${process.env.SUPABASE_STORAGE_URL}/photos/${data?.path}`,
-      });
-    }
-
+      };
+    };
     return c.json({ message: 'Photos uploaded successfully', results });
   } catch (error) {
     console.error('Photo upload error:', error);
