@@ -10,10 +10,12 @@
     "csv-parse": "^5.6.0",
     "dotenv": "^16.4.7",
     "hono": "^4.6.12",
+    "multer": "^1.4.5-lts.1",
     "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241202.0",
+    "@types/multer": "^1.4.12",
     "wrangler": "^3.92.0"
   }
 }
