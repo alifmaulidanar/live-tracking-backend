@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
+import multer from "multer";
 import { parse } from "csv-parse";
-import { v7 as uuidv7 } from 'uuid';
+import { v7 as uuid } from 'uuid';
 import { createSupabaseClient } from '../services/supabase';
 
 const ticket = new Hono();
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Get all tickets from supabase table "tickets"
 ticket.get('/tickets', async (c) => {
@@ -70,7 +73,7 @@ ticket.get('/ticket/:ticket_id', async (c) => {
 ticket.post('/ticket', async (c) => {
   const supabase = createSupabaseClient(c);
   const { user_id, geofence_id, description } = await c.req.json();
-  const ticket_id = uuidv7();
+  const ticket_id = uuid();
 
   try {
     const { error } = await supabase
@@ -125,7 +128,7 @@ ticket.post('/tickets/upload', async (c) => {
       if (!record.user_id || !record.geofence_id) return c.json({ message: 'Invalid CSV format: Missing required fields' }, 400);
 
       tickets.push({
-        ticket_id: uuidv7(),
+        ticket_id: uuid(),
         user_id: record.user_id,
         geofence_id: record.geofence_id,
         description: record.description || null,
@@ -183,6 +186,56 @@ ticket.put('/ticket/status', async (c) => {
     return c.json({ message: 'Ticket status updated successfully' });
   } catch (error) {
     return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+ticket.post('/ticket/photos/upload', async (c) => {
+  await new Promise<void>((resolve, reject) => {
+    upload.array('photos', 4)(c.req as any, c.res as any, (err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+  console.log("Request Headers:", c.req.headers);
+  console.log('Files uploaded:', (c.req as any).files);
+  const supabase = createSupabaseClient(c);
+  const files = (c.req as any).files as Express.Multer.File[];
+
+  if (!files || files.length === 0) {
+    return c.json({ message: 'No files uploaded' }, 400);
+  }
+
+  console.log({ files });
+  console.log({ ets });
+
+  try {
+    const results = [];
+
+    for (const file of files) {
+      const uniqueName = `${uuid()}-${file.originalname}`;
+
+      const { data, error } = await supabase.storage
+        .from('photos')
+        .upload(`user-photos/${uniqueName}`, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      results.push({
+        name: uniqueName,
+        path: data?.path,
+        url: `${process.env.SUPABASE_STORAGE_URL}/photos/${data?.path}`,
+      });
+    }
+
+    return c.json({ message: 'Photos uploaded successfully', results });
+  } catch (error) {
+    console.error('Photo upload error:', error);
+    return c.json({ message: 'Photo upload failed', error }, 500);
   }
 });
 
