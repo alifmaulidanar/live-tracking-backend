@@ -26,25 +26,25 @@ ticket.get('/tickets', async (c) => {
 });
 
 // Get a ticket by user_id
-// ticket.get('/ticket/:user_id', async (c) => {
-//   const supabase = createSupabaseClient(c);
-//   const user_id = c.req.param('user_id');
+ticket.get('/ticket/user/:user_id', async (c) => {
+  const supabase = createSupabaseClient(c);
+  const user_id = c.req.param('user_id');
 
-//   try {
-//     const { data, error } = await supabase
-//       .from('tickets')
-//       .select('*')
-//       .eq('user_id', user_id);
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('user_id', user_id);
 
-//     if (error) {
-//       return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
-//     }
+    if (error) {
+      return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
+    }
 
-//     return c.json(data);
-//   } catch (error) {
-//     return c.json({ message: 'Unexpected error', error: error }, 500);
-//   }
-// });
+    return c.json(data);
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
 
 // Get a ticket by ticket_id
 ticket.get('/ticket/:ticket_id', async (c) => {
