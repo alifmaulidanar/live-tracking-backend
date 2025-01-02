@@ -47,25 +47,67 @@ ticket.get('/ticket/:user_id', async (c) => {
 });
 
 // Get a ticket by ticket_id
+// ticket.get('/ticket/:ticket_id', async (c) => {
+//   const supabase = createSupabaseClient(c);
+//   const ticket_id = c.req.param('ticket_id');
+
+//   try {
+//     const { data, error } = await supabase
+//       .from('tickets')
+//       .select('*')
+//       .eq('ticket_id', ticket_id);
+
+//     if (error) {
+//       return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
+//     }
+
+//     return c.json(data);
+//   } catch (error) {
+//     return c.json({ message: 'Unexpected error', error: error }, 500);
+//   }
+// });
+
+// Get a ticket by ticket_id
 ticket.get('/ticket/:ticket_id', async (c) => {
   const supabase = createSupabaseClient(c);
   const ticket_id = c.req.param('ticket_id');
 
   try {
-    const { data, error } = await supabase
+    // Ambil data tiket dan foto terkait
+    const { data: ticketData, error: ticketError } = await supabase
       .from('tickets')
       .select('*')
-      .eq('ticket_id', ticket_id);
+      .eq('ticket_id', ticket_id)
+      .single();
 
-    if (error) {
-      return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
+    if (ticketError || !ticketData) {
+      return c.json({ message: 'Error fetching ticket', error: ticketError?.message || 'Ticket not found' }, 400);
     }
 
-    return c.json(data);
+    const { data: photosData, error: photosError } = await supabase
+      .from('photos')
+      .select('file_path')
+      .eq('ticket_id', ticket_id);
+
+    if (photosError) {
+      return c.json({ message: 'Error fetching photos', error: photosError.message }, 400);
+    }
+
+    // Gabungkan data tiket dan foto
+    const responseData = {
+      ...ticketData,
+      photos: photosData?.map((photo) => ({
+        url: `${process.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${photo.file_path}`,
+      })),
+    };
+
+    return c.json(responseData);
   } catch (error) {
-    return c.json({ message: 'Unexpected error', error: error }, 500);
+    console.error('Unexpected error:', error);
+    return c.json({ message: 'Unexpected error', error }, 500);
   }
 });
+
 
 // Create a ticket
 ticket.post('/ticket', async (c) => {
@@ -188,31 +230,39 @@ ticket.put('/ticket/status', async (c) => {
 });
 
 // Upload photos for a ticket
-ticket.post('/ticket/photos/upload', async (c) => {
+ticket.post('/ticket/photos/upload/:ticket_id', async (c) => {
   const supabase = createSupabaseClient(c);
   const body = await c.req.parseBody({ all: true });
   const files = body['photos'] || body['photos[]'];
+  const ticket_id = c.req.param('ticket_id');
+  const user_id = c.req.header('user_id');
 
   if (!files || !Array.isArray(files) || files.length === 0) {
     return c.json({ message: 'No files uploaded' }, 400);
   }
 
+  if (!ticket_id || !user_id) {
+    return c.json({ message: 'Missing ticket_id or user_id' }, 400);
+  }
+
   try {
     const results = [];
+
     for (const file of files) {
       if (file instanceof File) {
+        const filePath = `${user_id}/${ticket_id}/${file.name}`;
         // const uniqueName = `${uuid()}-${file.name}`;
 
         // Compress image using sharp (optional)
         // const compressedBuffer = await sharp(await file.arrayBuffer())
         //   .resize(800) // Resize to width of 800px
-        //   .jpeg({ quality: 70 }) // Compress to 70%
+        //   .jpeg({ quality: 50 }) // Compress to 50%
         //   .toBuffer();
 
         const { data, error } = await supabase.storage
           .from('ticket-photos')
           // .upload(`ticket-photos/${file.name}`, compressedBuffer, { // Upload compressed image
-          .upload(`ticket-photos/${file.name}`, await file.arrayBuffer(), { // Upload original image
+          .upload(filePath, await file.arrayBuffer(), { // Upload original image
             contentType: file.type,
             upsert: false,
           });
@@ -221,14 +271,28 @@ ticket.post('/ticket/photos/upload', async (c) => {
           throw new Error(error.message);
         }
 
+        // Insert photo record into photos table
+        const { data: photoData, error: photoError } = await supabase
+          .from('photos')
+          .insert({
+            ticket_id,
+            file_path: filePath,
+          })
+          .select();
+
+        if (photoError) {
+          throw new Error(photoError.message);
+        }
+
         results.push({
           name: file.name,
           path: data?.path,
-          url: `${process.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${data?.path}`,
+          storage_url: `${process.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${filePath}`,
+          db_record: photoData,
         });
       };
     };
-    return c.json({ message: 'Photos uploaded successfully', results });
+    return c.json({ message: 'Photos uploaded successfully', results }, 200);
   } catch (error) {
     console.error('Photo upload error:', error);
     return c.json({ message: 'Photo upload failed', error }, 500);
