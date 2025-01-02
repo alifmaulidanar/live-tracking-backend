@@ -26,36 +26,15 @@ ticket.get('/tickets', async (c) => {
 });
 
 // Get a ticket by user_id
-ticket.get('/ticket/:user_id', async (c) => {
-  const supabase = createSupabaseClient(c);
-  const user_id = c.req.param('user_id');
-
-  try {
-    const { data, error } = await supabase
-      .from('tickets')
-      .select('*')
-      .eq('user_id', user_id);
-
-    if (error) {
-      return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
-    }
-
-    return c.json(data);
-  } catch (error) {
-    return c.json({ message: 'Unexpected error', error: error }, 500);
-  }
-});
-
-// Get a ticket by ticket_id
-// ticket.get('/ticket/:ticket_id', async (c) => {
+// ticket.get('/ticket/:user_id', async (c) => {
 //   const supabase = createSupabaseClient(c);
-//   const ticket_id = c.req.param('ticket_id');
+//   const user_id = c.req.param('user_id');
 
 //   try {
 //     const { data, error } = await supabase
 //       .from('tickets')
 //       .select('*')
-//       .eq('ticket_id', ticket_id);
+//       .eq('user_id', user_id);
 
 //     if (error) {
 //       return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
@@ -73,17 +52,28 @@ ticket.get('/ticket/:ticket_id', async (c) => {
   const ticket_id = c.req.param('ticket_id');
 
   try {
-    // Ambil data tiket dan foto terkait
-    const { data: ticketData, error: ticketError } = await supabase
+    const { data, error } = await supabase
       .from('tickets')
       .select('*')
-      .eq('ticket_id', ticket_id)
-      .single();
+      .eq('ticket_id', ticket_id);
 
-    if (ticketError || !ticketData) {
-      return c.json({ message: 'Error fetching ticket', error: ticketError?.message || 'Ticket not found' }, 400);
+    if (error) {
+      return c.json({ message: 'Error fetching ticket', error: error.message }, 400);
     }
 
+    return c.json(data);
+  } catch (error) {
+    return c.json({ message: 'Unexpected error', error: error }, 500);
+  }
+});
+
+// Get a ticket photos by ticket_id
+ticket.get('/ticket/photo/:ticket_id', async (c: any) => {
+  const supabase = createSupabaseClient(c);
+  const ticket_id = c.req.param('ticket_id');
+
+  try {
+    // Fetch ticket photos
     const { data: photosData, error: photosError } = await supabase
       .from('photos')
       .select('file_path')
@@ -93,11 +83,10 @@ ticket.get('/ticket/:ticket_id', async (c) => {
       return c.json({ message: 'Error fetching photos', error: photosError.message }, 400);
     }
 
-    // Gabungkan data tiket dan foto
+    // Combine ticket data with photo URLs
     const responseData = {
-      ...ticketData,
       photos: photosData?.map((photo) => ({
-        url: `${process.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${photo.file_path}`,
+        url: `${c.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${photo.file_path}`,
       })),
     };
 
@@ -107,7 +96,6 @@ ticket.get('/ticket/:ticket_id', async (c) => {
     return c.json({ message: 'Unexpected error', error }, 500);
   }
 });
-
 
 // Create a ticket
 ticket.post('/ticket', async (c) => {
@@ -230,7 +218,7 @@ ticket.put('/ticket/status', async (c) => {
 });
 
 // Upload photos for a ticket
-ticket.post('/ticket/photos/upload/:ticket_id', async (c) => {
+ticket.post('/ticket/photos/upload/:ticket_id', async (c: any) => {
   const supabase = createSupabaseClient(c);
   const body = await c.req.parseBody({ all: true });
   const files = body['photos'] || body['photos[]'];
@@ -251,7 +239,6 @@ ticket.post('/ticket/photos/upload/:ticket_id', async (c) => {
     for (const file of files) {
       if (file instanceof File) {
         const filePath = `${user_id}/${ticket_id}/${file.name}`;
-        // const uniqueName = `${uuid()}-${file.name}`;
 
         // Compress image using sharp (optional)
         // const compressedBuffer = await sharp(await file.arrayBuffer())
@@ -287,7 +274,7 @@ ticket.post('/ticket/photos/upload/:ticket_id', async (c) => {
         results.push({
           name: file.name,
           path: data?.path,
-          storage_url: `${process.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${filePath}`,
+          storage_url: `${c.env.SUPABASE_URL}/storage/v1/object/public/ticket-photos/${filePath}`,
           db_record: photoData,
         });
       };
